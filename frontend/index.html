@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Exchange Homepage</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <!-- <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet"> -->
+    <link rel="stylesheet" href="./resources/styles/styles.css">
+</head>
+
+<body>
+    <div class="navbar">
+        <a class="no-hover-color" href="#"><img src="./resources/images/Qlean_fin_logo-tr.png" alt="Qlean Finance Logo"
+                class="logo"></a>
+        <a href="#">Home</a>
+        <a href="#">Stocks</a>
+        <a href="#">About</a>
+        <a href="#">Contact</a>
+    </div>
+    <header class="container">
+        <h1>Welcome to Qlean's Stock Exchange</h1>
+    </header>
+
+    <main>
+        <div id="search">
+
+            <h2>Search The Right Stock For You!</h2>
+            <input type="text" id="ticker-input" placeholder="Enter Ticker Symbol">
+            <button onclick="get_stock()">Get Stock Price</button>
+        </div>
+
+        <div id="result"></div>
+
+    </main>
+
+    <script src="./resources/scripts/search.js"></script>
+</body>
+
+</html>
