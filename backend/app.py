@@ -106,5 +106,28 @@ def login():
         return jsonify({"message": "Logged in successfully", "access_token": access_token})
     return jsonify({"message": "Invalid username or password"}), 401
 
+@app.route('/watch_history', methods=['GET','POST'])
+@jwt_required()
+def watch_history():
+    if request.method == 'GET':
+        user_id = get_jwt_identity()
+        user = User.query.get(user_id)
+        if user:
+            history = SearchHistory.query.filter_by(user_id=user_id).all()
+            return jsonify([history_item.qurey for history_item in history])
+        return jsonify({"message":"User not found"}), 404
+    
+    elif request.method == 'POST':
+        print('we here!')
+        data = request.json
+        query = data.get('query')
+        if query:
+            SearchHistory = SearchHistory(query=query, user_id=get_jwt_identity())
+            db.session.add(SearchHistory)
+            db.session.commit()
+            return jsonify({"message":"Added to search history"}), 201
+        return jsonify({"error": "Query parameter is required"}), 400
+    
+
 if __name__ == "__main__":
     app.run(debug=True)
