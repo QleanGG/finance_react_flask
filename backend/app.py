@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 import yfinance as yf
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import desc
 from sqlalchemy.orm import relationship
 from flask_login import LoginManager, login_user, current_user, logout_user, login_required
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
@@ -34,7 +35,7 @@ class User(db.Model):
 
 class SearchHistory(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    query = db.Column(db.String(255), nullable=False)
+    query_text = db.Column(db.String(255), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     user = relationship("User", back_populates="search_history")
 
@@ -102,7 +103,8 @@ def login():
     data = request.get_json()
     user = User.query.filter_by(username=data['username']).first()
     if user and user.check_password(data['password']):
-        access_token = create_access_token(identity=data['username'])
+        access_token = create_access_token(identity={"username": data['username'], "user_id": user.id})
+        print(access_token)
         return jsonify({"message": "Logged in successfully", "access_token": access_token})
     return jsonify({"message": "Invalid username or password"}), 401
 
@@ -110,20 +112,26 @@ def login():
 @jwt_required()
 def watch_history():
     if request.method == 'GET':
-        user_id = get_jwt_identity()
-        user = User.query.get(user_id)
-        if user:
-            history = SearchHistory.query.filter_by(user_id=user_id).all()
-            return jsonify([history_item.qurey for history_item in history])
-        return jsonify({"message":"User not found"}), 404
+        user_identity = get_jwt_identity()
+        user_id = user_identity.get('user_id')  # Extract user_id from user_identity
+        if user_id is not None:
+            user = User.query.get(user_id)
+            if user:
+                history = SearchHistory.query.filter(SearchHistory.user_id == user_id).order_by(SearchHistory.id.desc()).limit(10)
+                return jsonify([history_item.query_text for history_item in history])
+            return jsonify({"message": "User not found"}), 404
+        return jsonify({"message": "Invalid token format"}), 400
+
     
     elif request.method == 'POST':
         print('we here!')
         data = request.json
         query = data.get('query')
         if query:
-            SearchHistory = SearchHistory(query=query, user_id=get_jwt_identity())
-            db.session.add(SearchHistory)
+            user_identity = get_jwt_identity()
+            user_id = user_identity.get('user_id')
+            search_history_entry = SearchHistory(query=query, user_id=user_id)
+            db.session.add(search_history_entry)
             db.session.commit()
             return jsonify({"message":"Added to search history"}), 201
         return jsonify({"error": "Query parameter is required"}), 400
