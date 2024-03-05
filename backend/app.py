@@ -113,14 +113,35 @@ def login():
 def watch_history():
     if request.method == 'GET':
         user_identity = get_jwt_identity()
-        user_id = user_identity.get('user_id')  # Extract user_id from user_identity
-        if user_id is not None:
-            user = User.query.get(user_id)
-            if user:
-                history = SearchHistory.query.filter(SearchHistory.user_id == user_id).order_by(SearchHistory.id.desc()).limit(10)
-                return jsonify([history_item.query_text for history_item in history])
+        user_id = user_identity.get('user_id')
+
+        if user_id is None:
+            return jsonify({"message": "Invalid token format"}), 400
+
+        user = User.query.get(user_id)
+
+        if user is None:
             return jsonify({"message": "User not found"}), 404
-        return jsonify({"message": "Invalid token format"}), 400
+
+        # Retrieve search history for the user
+        history = SearchHistory.query.filter(SearchHistory.user_id == user_id) \
+                                     .order_by(SearchHistory.id.desc()) \
+                                     .limit(10) \
+                                     .all()
+
+        response = []
+        for item in history:
+            # Fetch company info using yfinance
+            stock = yf.Ticker(item.query_text)
+            info = stock.info
+
+            response.append({
+                "query_text": item.query_text,
+                "companyName": info.get('longName', 'Unknown Company'),
+                "currentPrice": info.get('currentPrice'),
+            })
+
+        return jsonify(response)
 
     
     elif request.method == 'POST':
@@ -130,7 +151,7 @@ def watch_history():
         if query:
             user_identity = get_jwt_identity()
             user_id = user_identity.get('user_id')
-            search_history_entry = SearchHistory(query=query, user_id=user_id)
+            search_history_entry = SearchHistory(query_text=query, user_id=user_id)
             db.session.add(search_history_entry)
             db.session.commit()
             return jsonify({"message":"Added to search history"}), 201
